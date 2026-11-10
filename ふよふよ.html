@@ -1,0 +1,1253 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>ふよふよ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* レイアウト：上に細いスコア帯、残り全部が縦長の遊び場。開始・結果・調整は遊び場に重ねるパネル。 */
+:root {
+  --bg: #ECEEF9;
+  --panel: #FFFFFF;
+  --ink: #232846;
+  --muted: #5E6488;
+  --line: #C9CEE8;
+  --accent: #D6336C;
+  --accent-ink: #FFFFFF;
+  --sky-top: #CFE2FA;
+  --sky-bot: #F6F2FF;
+  --danger: #D92B2B;
+  --land: #3B5BDB;
+  --veil: rgba(236, 238, 249, 0.90);
+  --font-display: "Mochiy Pop One", "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+  --font-body: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12152A; --panel: #1D2242; --ink: #EDEFFC; --muted: #A3A9CC; --line: #343B66;
+    --accent: #FF7FA8; --accent-ink: #2A0A18; --sky-top: #1B2650; --sky-bot: #0F1226;
+    --danger: #FF6B6B; --land: #8DA2FF; --veil: rgba(18, 21, 42, 0.90);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12152A; --panel: #1D2242; --ink: #EDEFFC; --muted: #A3A9CC; --line: #343B66;
+  --accent: #FF7FA8; --accent-ink: #2A0A18; --sky-top: #1B2650; --sky-bot: #0F1226;
+  --danger: #FF6B6B; --land: #8DA2FF; --veil: rgba(18, 21, 42, 0.90);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 8px;
+  box-sizing: border-box;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+*, *::before, *::after { box-sizing: border-box; }
+
+.app {
+  height: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* スコア帯 */
+.hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 12px;
+  padding-inline: 4px;
+}
+.hud-item { display: flex; flex-direction: column; min-width: 0; }
+.hud-item.mid { align-items: center; }
+.hud-item.right { align-items: flex-end; }
+.hud-label { font-size: 11px; letter-spacing: 0.08em; color: var(--muted); line-height: 1.2; }
+.hud-value {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.hud-value.time { font-size: 30px; }
+.hud-value.time { transition: transform 0.2s; }
+.hud-value.time.hurry { color: var(--danger); }
+.hud-value.time.bump { transform: scale(1.25); color: var(--accent); }
+
+/* 遊び場 */
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  background: var(--sky-bot);
+}
+#cv { display: block; width: 100%; height: 100%; touch-action: none; }
+.quit {
+  font: inherit; font-size: 12px; font-weight: 700; line-height: 1.2;
+  color: var(--muted); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 14px; min-height: 26px;
+}
+
+/* 重ねるパネル */
+.overlay {
+  position: absolute; inset: 0;
+  background: var(--veil);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px 18px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 14vw, 60px);
+  line-height: 1.1;
+  margin: 0;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.title span { display: inline-block; animation: bob 2.6s ease-in-out infinite; }
+.title span:nth-child(2) { animation-delay: -0.65s; }
+.title span:nth-child(3) { animation-delay: -1.3s; }
+.title span:nth-child(4) { animation-delay: -1.95s; }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@media (prefers-reduced-motion: reduce) { .title span { animation: none; } }
+.lead { margin: 0; font-weight: 700; font-size: 16px; text-wrap: balance; word-break: auto-phrase; }
+.rules { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.rules li { display: grid; grid-template-columns: 1.8em 1fr; gap: 6px; }
+.rules .zero { font-family: var(--font-display); color: var(--accent); }
+
+.field { display: flex; flex-direction: column; gap: 2px; }
+.field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.field-head label { font-weight: 700; min-width: 0; }
+.field-head output { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+input[type="range"] { width: 100%; height: 32px; accent-color: var(--accent); margin: 0; }
+.toggle { display: flex; align-items: center; gap: 10px; min-height: 36px; font-weight: 700; }
+.toggle input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; flex: none; }
+
+.buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  font: inherit; font-weight: 700; font-size: 16px;
+  min-height: 48px; padding: 8px 20px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: var(--panel); color: var(--ink);
+  flex: 1 1 auto;
+}
+.btn.primary {
+  font-family: var(--font-display); font-weight: 400; font-size: 20px;
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+  flex-basis: 100%;
+}
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible, .quit:focus-visible, summary:focus-visible, input:focus-visible {
+  outline: 3px solid var(--land); outline-offset: 2px;
+}
+
+details.tune { border-top: 2px solid var(--line); padding-top: 10px; }
+details.tune summary { font-weight: 700; cursor: pointer; min-height: 36px; display: flex; align-items: center; gap: 6px; }
+details.tune summary::before { content: "▸"; color: var(--accent); }
+details.tune[open] summary::before { content: "▾"; }
+details.tune summary::-webkit-details-marker { display: none; }
+.tune-body { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
+.tune-note { margin: 0; font-size: 13px; color: var(--muted); }
+.official { display: flex; flex-direction: column; gap: 6px; }
+.official .btn { width: 100%; flex: none; min-height: 44px; font-size: 15px; }
+.tune-status { margin: 0; font-weight: 700; }
+
+/* 結果 */
+.end-reason { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1.2; margin: 0; color: var(--accent); }
+.end-score { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.end-score .big { font-family: var(--font-display); font-size: 48px; line-height: 1; font-variant-numeric: tabular-nums; }
+.end-score .sub { font-weight: 700; color: var(--muted); }
+.stats { margin: 0; display: grid; grid-template-columns: 1fr auto; column-gap: 12px; }
+.stats dt, .stats dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.stats dt { color: var(--muted); }
+.stats dd { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.copied { margin: 0; font-size: 13px; color: var(--muted); min-height: 1.6em; }
+.copybox { width: 100%; min-height: 120px; font: inherit; font-size: 12px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; -webkit-user-select: text; user-select: text; }
+</style>
+
+<div class="app">
+  <header class="hud">
+    <div class="hud-item">
+      <span class="hud-label">スコア</span>
+      <span class="hud-value" id="hudScore">0</span>
+    </div>
+    <div class="hud-item mid">
+      <span class="hud-label" id="hudTimeLabel">のこり</span>
+      <button class="quit" id="btnQuit" type="button" hidden>やめる</button>
+      <span class="hud-value time" id="hudTime">90</span>
+    </div>
+    <div class="hud-item right">
+      <span class="hud-label">最大サイズ</span>
+      <span class="hud-value" id="hudMax">1</span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="ふよふよの遊び場"></canvas>
+
+    <section class="overlay" id="startScreen">
+      <h1 class="title" aria-label="ふよふよ"><span>ふ</span><span>よ</span><span>ふ</span><span>よ</span></h1>
+      <p class="lead">上のふよを指で引っぱって、下で大きく育てよう。</p>
+      <ul class="rules">
+        <li><span>🌝</span><span>上で同じふよが4つくっつくと「ぱえよ〜ん」と消えます。何連鎖しても <span class="zero">0点</span>。</span></li>
+        <li><span>🥶</span><span>青い線より下で指を離すと着地。下で同じふよ・同じ大きさが4つくっつくと、ひとまわり大きくなって得点。</span></li>
+        <li><span>😡</span><span>赤い線までふよが溜まるか、時間切れで終了。</span></li>
+      </ul>
+      <div class="field">
+        <div class="field-head"><label for="set-timeLimit">制限時間</label><output id="out-timeLimit" for="set-timeLimit"></output></div>
+        <input type="range" id="set-timeLimit" min="60" max="120" step="5">
+      </div>
+      <div class="buttons">
+        <button class="btn primary" id="btnStart" type="button">スタート</button>
+        <button class="btn" id="btnIdle" type="button">放置テスト（30秒）</button>
+      </div>
+      <div class="official">
+        <p class="tune-status" id="tuneStatus" aria-live="polite"></p>
+        <button class="btn" id="btnReset" type="button">公式デフォルトに戻す</button>
+        <p class="tune-note" id="officialNote"></p>
+      </div>
+      <details class="tune" id="tune">
+        <summary>難易度の調整パネル</summary>
+        <div class="tune-body" id="tuneBody"></div>
+      </details>
+    </section>
+
+    <section class="overlay" id="endScreen" hidden>
+      <h2 class="end-reason" id="endReason">時間切れ！</h2>
+      <div class="end-score">
+        <span class="big" id="endScore">0</span>
+        <span class="sub" id="endSub">最大サイズ 1</span>
+      </div>
+      <div class="buttons">
+        <button class="btn primary" id="btnAgain" type="button">もう一度</button>
+        <button class="btn" id="btnBack" type="button">設定に戻る</button>
+        <button class="btn" id="btnCopy" type="button">結果をコピー</button>
+      </div>
+      <p class="copied" id="copied" aria-live="polite"></p>
+      <textarea class="copybox" id="copyBox" readonly hidden aria-label="結果のテキスト"></textarea>
+      <dl class="stats" id="stats"></dl>
+    </section>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   CONFIG：公式デフォルトv1。topPopBonus と spawnEnd は暫定値。調整パネルから自由に変えられる。
+   ========================================================= */
+const DEFAULTS = {
+  // 盤面・時間
+  cols: 6,              // 初期ふよの大きさ（画面幅 ÷ cols が直径）
+  timeLimit: 60,        // 制限時間（秒）
+  topPopBonus: 3,       // 【暫定】 上で消えるたびに足す時間（秒）。0で延長なし
+  idleSeconds: 30,      // 放置テストの長さ（秒）
+  // 出現
+  spawnStart: 1.2,      // 湧き間隔・開始（秒）
+  spawnEnd: 0.9,        // 【暫定】 湧き間隔・終了（秒）
+  accel: true,          // 後半に湧きを速くする
+  kinds: 4,             // 色数
+  fifthAt: 0,           // 5色目を足す時刻（秒）。0でなし
+  // 上下の線（画面の上からの％）
+  landingLine: 60,      // これより下で離すと「重い」になる
+  deadLine: 32,         // ここまで埋まると終了
+  deadSeconds: 1.5,     // デッドライン超えが何秒続いたら終了か
+  // 消去・成長
+  popCountTop: 4,       // 上で消える個数
+  mergeCountBottom: 4,  // 下で合体する個数
+  popDelay: 0.25,       // 上の消去までの待ち（秒）
+  mergeDelay: 0.2,      // 下の合体までの待ち（秒）
+  growth: 1.65,         // サイズ+1ごとの半径の倍率
+  maxSize: 6,           // 最大サイズ
+  maxRadiusRatio: 0.46, // 半径の上限（画面幅に対する比）
+  // 得点
+  scoreTable: { 2: 100, 3: 400, 4: 1600, 5: 6400, 6: 25600 },
+  chainBonus: true,     // 下の連鎖 n 回目は得点 × n
+  chainWindow: 0.8,     // 連鎖とみなす間隔（秒）
+  endBonus: false,      // 終了時ボーナス
+  endBonusTable: { 1: 0, 2: 20, 3: 80, 4: 320, 5: 1280, 6: 5120 },
+  // 操作
+  touchPad: 14,         // タッチ判定の余白（px）
+  fingerOffset: 36,     // 掴んだふよを指の上にずらす量（px）
+  flick: true,          // 離したときの勢いを引き継ぐ
+  grabCluster: false,   // 同じ色の塊ごとつかむ
+  // 物理
+  buoyancy: 1150,        // 浮力
+  gravity: 1800,        // 重力
+  linkBreak: 1.6,       // リンクが切れる距離（接触距離の倍率）
+  heldLinkBreak: 1.25,  // 掴んでいるふよのリンクが切れる距離
+  linkStiffness: 0.5,   // リンクの硬さ
+  // 見た目・音
+  rings: true,          // 色の縁取り
+  sound: true           // 音
+};
+
+const OFFICIAL_VERSION = 'v1';          // 公式デフォルトの版。値を見直したら上げる
+const PROVISIONAL = ['topPopBonus', 'spawnEnd']; // 暫定値（記録がなく見積もりで決めた項目）
+
+const SLIDERS = [
+  ['cols', 'ふよの大きさ（列数換算）', 5, 8, 1, '列'],
+  ['topPopBonus', '上の消去での時間延長', 0, 5, 0.5, '秒'],
+  ['spawnStart', '湧き間隔（開始）', 0.4, 2.5, 0.1, '秒'],
+  ['spawnEnd', '湧き間隔（終了）', 0.3, 2.5, 0.1, '秒'],
+  ['kinds', '色数', 3, 5, 1, '色'],
+  ['fifthAt', '5色目を足す時刻（0でなし）', 0, 120, 5, '秒'],
+  ['landingLine', '着地ライン（上から）', 40, 85, 1, '%'],
+  ['deadLine', 'デッドライン（上から）', 15, 60, 1, '%'],
+  ['growth', '成長倍率（半径）', 1.2, 2, 0.05, '倍'],
+  ['touchPad', 'タッチ判定の余白', 0, 40, 2, 'px'],
+  ['fingerOffset', '指オフセット', 0, 90, 2, 'px'],
+  ['buoyancy', '浮力', 300, 2000, 50, ''],
+  ['gravity', '重力', 600, 4000, 100, '']
+];
+const TOGGLES = [
+  ['accel', '後半に湧きを速くする'],
+  ['flick', '離したときの勢いを引き継ぐ'],
+  ['grabCluster', '同じ色の塊ごとつかむ'],
+  ['chainBonus', '下の連鎖ボーナス'],
+  ['endBonus', '終了時ボーナス'],
+  ['rings', '色の縁取り'],
+  ['sound', '音']
+];
+
+const KINDS = ['🌝', '🌚', '🤢', '🥶', '😡'];
+const KCOL = ['#F2B705', '#8B7FC7', '#5BAA3C', '#3C9BE8', '#E5484D'];
+const STORE_KEY = 'fuyofuyo-config-v1';
+
+function loadConfig() {
+  const c = JSON.parse(JSON.stringify(DEFAULTS));
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (saved && typeof saved === 'object') {
+      for (const k of Object.keys(saved)) {
+        if (k in c && typeof saved[k] === typeof c[k] && typeof c[k] !== 'object') c[k] = saved[k];
+      }
+    }
+  } catch (e) { /* 保存が使えなくても動く */ }
+  return c;
+}
+function saveConfig() {
+  try {
+    const flat = {};
+    for (const k of Object.keys(CFG)) if (typeof CFG[k] !== 'object') flat[k] = CFG[k];
+    localStorage.setItem(STORE_KEY, JSON.stringify(flat));
+  } catch (e) { /* 無視 */ }
+}
+let CFG = loadConfig();
+// 制限時間の既定を60秒にしたので、保存済みの設定は初回だけ60秒に直す（他の値は残す）
+try {
+  if (!localStorage.getItem(STORE_KEY + '-time60')) {
+    CFG.timeLimit = 60;
+    saveConfig();
+    localStorage.setItem(STORE_KEY + '-time60', '1');
+  }
+} catch (e) { /* 保存が使えなくても動く */ }
+
+/* =========================================================
+   画面まわり
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+const cv = $('cv');
+const ctx = cv.getContext('2d');
+const stage = $('stage');
+let VW = 360, VH = 600, DPR = 1;
+let COL = {};
+
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = (n) => cs.getPropertyValue(n).trim();
+  COL = {
+    skyTop: g('--sky-top'), skyBot: g('--sky-bot'), ink: g('--ink'), muted: g('--muted'),
+    accent: g('--accent'), danger: g('--danger'), land: g('--land'), panel: g('--panel'), line: g('--line')
+  };
+}
+function resize() {
+  const w = Math.max(200, stage.clientWidth), h = Math.max(240, stage.clientHeight);
+  DPR = Math.min(3, window.devicePixelRatio || 1);
+  VW = w; VH = h;
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+  if (S) { S.W = w; S.H = h; }
+}
+
+// 絵文字は一度だけ描いて使い回す
+const sprites = [];
+function buildSprites() {
+  for (let k = 0; k < KINDS.length; k++) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 160;
+    const x = c.getContext('2d');
+    x.font = '118px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(KINDS[k], 80, 88);
+    sprites[k] = c;
+  }
+}
+
+/* =========================================================
+   音
+   ========================================================= */
+let AC = null;
+function initAudio() {
+  if (!CFG.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+  } catch (e) { AC = null; }
+  try { if ('speechSynthesis' in window) window.speechSynthesis.getVoices(); } catch (e) { /* 無視 */ }
+}
+function tone(f0, f1, dur, type, vol, delay) {
+  if (!AC || !CFG.sound) return;
+  try {
+    const t = AC.currentTime + (delay || 0);
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol || 0.2, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + dur + 0.03);
+  } catch (e) { /* 無視 */ }
+}
+function soundPaeyon(chain) {
+  if (!CFG.sound || !S || S.mode === 'demo') return;
+  // 効果音は必ず鳴らす。読み上げは使える端末だけ。
+  tone(520 + chain * 60, 900 + chain * 60, 0.09, 'sine', 0.16, 0);
+  tone(900 + chain * 60, 260, 0.34, 'triangle', 0.16, 0.08);
+  try {
+    if ('speechSynthesis' in window && !window.speechSynthesis.speaking) {
+      const u = new SpeechSynthesisUtterance('ぱえよーん');
+      u.lang = 'ja-JP'; u.rate = 1.35; u.pitch = 1.7; u.volume = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+  } catch (e) { /* 無視 */ }
+}
+function soundMerge(size, chain) {
+  if (!CFG.sound || !S || S.mode === 'demo') return;
+  const base = 300 + size * 70 + chain * 40;
+  tone(base, base, 0.1, 'square', 0.07, 0);
+  tone(base * 1.26, base * 1.26, 0.1, 'square', 0.07, 0.08);
+  tone(base * 1.5, base * 1.5, 0.2, 'square', 0.07, 0.16);
+}
+
+/* =========================================================
+   ゲーム状態
+   ========================================================= */
+let S = null;
+const ITER = 5;
+const H_STEP = 1 / 120;
+const MAX_V = 2600;
+
+function newGame(mode) {
+  let dead = CFG.deadLine, land = CFG.landingLine;
+  if (dead > land - 8) dead = land - 8; // 2本の線が重ならないように
+  S = {
+    mode, t: 0,
+    timeLimit: mode === 'idle' ? CFG.idleSeconds : (mode === 'demo' ? Infinity : CFG.timeLimit),
+    W: VW, H: VH,
+    r0: VW / CFG.cols / 2,
+    deadFrac: dead / 100, landFrac: land / 100,
+    bodies: [], links: new Map(), nextId: 1,
+    spawnT: 0.25, score: 0, maxSize: 1,
+    held: null, dangerT: 0, over: false, reason: null,
+    topChain: 0, lastTopPop: -99, botChain: 0, lastMerge: -99,
+    popups: [], particles: [],
+    metrics: {
+      spawned: 0, topPops: 0, topBodies: 0, maxTopChain: 0,
+      carried: 0, carryTime: 0, touches: 0, misses: 0,
+      firstSize2: null, merges: {}, maxBotChain: 0, endBonus: 0, extendCount: 0, extendTotal: 0
+    }
+  };
+  return S;
+}
+
+function makeBody(o) {
+  const b = {
+    id: S.nextId++, x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0,
+    r: 1, tr: 1, gr: 0, kind: 0, size: 1,
+    state: 'float', held: false, thrown: false,
+    restT: 0, stuckT: 0, matchT: 0, age: 0, grabT: 0, relT: 0, tx: 0, ty: 0, dead: false
+  };
+  Object.assign(b, o);
+  S.bodies.push(b);
+  return b;
+}
+function radiusFor(size) {
+  return Math.min(S.r0 * Math.pow(CFG.growth, size - 1), S.W * CFG.maxRadiusRatio);
+}
+function spawnInterval() {
+  if (!CFG.accel) return CFG.spawnStart;
+  const k = Math.min(1, S.t / CFG.timeLimit);
+  return CFG.spawnStart + (CFG.spawnEnd - CFG.spawnStart) * k;
+}
+function kindsNow() {
+  let n = Math.max(1, Math.min(5, CFG.kinds));
+  if (CFG.fifthAt > 0 && S.t >= CFG.fifthAt && n < 5) n += 1;
+  return n;
+}
+function spawn() {
+  const r0 = S.r0;
+  makeBody({
+    x: r0 + Math.random() * (S.W - r0 * 2), y: r0 * 0.5,
+    r: r0 * 0.35, tr: r0, gr: (r0 * 0.65) / 0.3,
+    kind: Math.floor(Math.random() * kindsNow())
+  });
+  S.metrics.spawned++;
+}
+
+/* ---------- リンク（浮遊ふよ同士の接着） ---------- */
+function linkKey(a, b) { return a.id < b.id ? a.id + '_' + b.id : b.id + '_' + a.id; }
+function addLink(a, b) {
+  const k = linkKey(a, b);
+  if (!S.links.has(k)) S.links.set(k, { a, b });
+}
+function dropLinksOf(b) {
+  for (const [k, l] of S.links) if (l.a === b || l.b === b) S.links.delete(k);
+}
+function invMass(b) {
+  if (b.state === 'static') return 0;
+  const m = (b.r * b.r) / (S.r0 * S.r0);
+  if (b.held) return 0.04 / m;
+  if (b.state === 'heavy') return 0.25 / m;
+  return 1 / m;
+}
+function solveLinks() {
+  for (const [k, l] of S.links) {
+    const a = l.a, b = l.b;
+    if (a.dead || b.dead || a.state !== 'float' || b.state !== 'float') { S.links.delete(k); continue; }
+    const rest = a.r + b.r;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 0.001;
+    const anyHeld = a.held || b.held;
+    if (d > rest * (anyHeld ? CFG.heldLinkBreak : CFG.linkBreak)) { S.links.delete(k); continue; }
+    if (d > rest) {
+      const wa = invMass(a), wb = invMass(b), ws = wa + wb;
+      if (ws <= 0) continue;
+      const pull = (d - rest) * CFG.linkStiffness * (anyHeld ? 0.4 : 1);
+      const nx = dx / d, ny = dy / d;
+      a.x += nx * pull * wa / ws; a.y += ny * pull * wa / ws;
+      b.x -= nx * pull * wb / ws; b.y -= ny * pull * wb / ws;
+    }
+  }
+}
+function solveContacts(makeLinks) {
+  const B = S.bodies, n = B.length, W = S.W, H = S.H;
+  for (let i = 0; i < n; i++) {
+    const a = B[i];
+    for (let j = i + 1; j < n; j++) {
+      const b = B[j];
+      const rest = a.r + b.r;
+      let dx = b.x - a.x, dy = b.y - a.y;
+      if (dx > rest * 1.05 || dx < -rest * 1.05 || dy > rest * 1.05 || dy < -rest * 1.05) continue;
+      let d2 = dx * dx + dy * dy;
+      if (d2 >= rest * rest * 1.07) continue;
+      if (d2 < 0.0001) { dx = (Math.random() - 0.5) * 0.1; dy = 0.1; d2 = dx * dx + dy * dy; }
+      const d = Math.sqrt(d2);
+      if (makeLinks && a.state === 'float' && b.state === 'float' && !a.thrown && !b.thrown && d < rest * 1.03) addLink(a, b);
+      if (d >= rest) continue;
+      const wa = invMass(a), wb = invMass(b), ws = wa + wb;
+      if (ws <= 0) continue;
+      const pen = rest - d, nx = dx / d, ny = dy / d;
+      a.x -= nx * pen * wa / ws; a.y -= ny * pen * wa / ws;
+      b.x += nx * pen * wb / ws; b.y += ny * pen * wb / ws;
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    const b = B[i];
+    if (b.state === 'static') continue;
+    if (b.x < b.r) b.x = b.r; else if (b.x > W - b.r) b.x = W - b.r;
+    if (b.y < b.r) b.y = b.r; else if (b.y > H - b.r) b.y = H - b.r;
+  }
+}
+
+/* ---------- 1ステップ ---------- */
+function step(dt) {
+  const B = S.bodies, r0 = S.r0;
+  for (const b of B) {
+    b.age += dt; b.px = b.x; b.py = b.y;
+    if (b.r < b.tr) b.r = Math.min(b.tr, b.r + b.gr * dt);
+    if (b.state === 'static') continue;
+    if (b.held) {
+      let dx = b.tx - b.x, dy = b.ty - b.y;
+      const k = Math.min(1, 30 * dt);
+      dx *= k; dy *= k;
+      const m = Math.hypot(dx, dy), cap = r0 * 0.7;
+      if (m > cap) { dx *= cap / m; dy *= cap / m; }
+      b.x += dx; b.y += dy;
+      continue;
+    }
+    let damp;
+    if (b.state === 'float') { b.vy -= CFG.buoyancy * dt; damp = b.thrown ? 1.2 : 2.5; }
+    else { b.vy += CFG.gravity * dt; damp = 0.8; }
+    const f = Math.exp(-damp * dt);
+    b.vx *= f; b.vy *= f;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+  }
+  for (let it = 0; it < ITER; it++) { solveLinks(); solveContacts(it === 0); }
+  for (const b of B) {
+    if (b.state === 'static') { b.vx = 0; b.vy = 0; continue; }
+    let vx = (b.x - b.px) / dt, vy = (b.y - b.py) / dt;
+    const sp = Math.hypot(vx, vy);
+    if (sp > MAX_V) { vx *= MAX_V / sp; vy *= MAX_V / sp; }
+    b.vx = vx; b.vy = vy;
+  }
+}
+
+/* ---------- 状態の切替 ---------- */
+function makeHeavy(b, carried) {
+  b.state = 'heavy'; b.thrown = false; b.held = false; b.restT = 0; b.stuckT = 0; b.matchT = 0;
+  dropLinksOf(b);
+  if (carried && S.mode === 'play') {
+    S.metrics.carried++;
+    S.metrics.carryTime += Math.max(0, S.t - b.grabT);
+  }
+}
+function supported(b) {
+  if (b.y + b.r >= S.H - 2) return true;
+  for (const s of S.bodies) {
+    if (s === b || s.state !== 'static') continue;
+    const rest = s.r + b.r + 2;
+    const dx = s.x - b.x, dy = s.y - b.y;
+    if (dx * dx + dy * dy < rest * rest) return true;
+  }
+  return false;
+}
+
+/* ---------- 同じふよのつながりを調べる ---------- */
+function find(p, i) { while (p[i] !== i) { p[i] = p[p[i]]; i = p[i]; } return i; }
+function groupsFrom(p, n, ok) {
+  const map = new Map();
+  for (let i = 0; i < n; i++) {
+    if (!ok(i)) continue;
+    const r = find(p, i);
+    if (!map.has(r)) map.set(r, []);
+    map.get(r).push(i);
+  }
+  return map;
+}
+function checkGroups(dt) {
+  const B = S.bodies, n = B.length;
+  const idx = new Map();
+  for (let i = 0; i < n; i++) idx.set(B[i], i);
+
+  // 上：リンクでつながった同じふよ
+  const pt = []; for (let i = 0; i < n; i++) pt.push(i);
+  const okTop = (i) => B[i].state === 'float' && !B[i].held && !B[i].thrown;
+  for (const l of S.links.values()) {
+    const i = idx.get(l.a), j = idx.get(l.b);
+    if (i === undefined || j === undefined) continue;
+    if (!okTop(i) || !okTop(j) || l.a.kind !== l.b.kind) continue;
+    pt[find(pt, i)] = find(pt, j);
+  }
+  const inTop = new Set();
+  const popList = [];
+  for (const g of groupsFrom(pt, n, okTop).values()) {
+    if (g.length < CFG.popCountTop) continue;
+    let mx = 0;
+    for (const i of g) { B[i].matchT += dt; inTop.add(i); if (B[i].matchT > mx) mx = B[i].matchT; }
+    if (mx >= CFG.popDelay) popList.push(g.map((i) => B[i]));
+  }
+
+  // 下：触れ合っている同じふよ・同じサイズ
+  const pb = []; for (let i = 0; i < n; i++) pb.push(i);
+  const okBot = (i) => B[i].state !== 'float' && !B[i].held && B[i].size < CFG.maxSize;
+  for (let i = 0; i < n; i++) {
+    if (!okBot(i)) continue;
+    const a = B[i];
+    for (let j = i + 1; j < n; j++) {
+      if (!okBot(j)) continue;
+      const b = B[j];
+      if (a.kind !== b.kind || a.size !== b.size) continue;
+      const rest = (a.r + b.r) * 1.06 + 1.5;
+      const dx = b.x - a.x, dy = b.y - a.y;
+      if (dx * dx + dy * dy < rest * rest) pb[find(pb, i)] = find(pb, j);
+    }
+  }
+  const inBot = new Set();
+  const mergeList = [];
+  for (const g of groupsFrom(pb, n, okBot).values()) {
+    if (g.length < CFG.mergeCountBottom) continue;
+    let mx = 0;
+    for (const i of g) { B[i].matchT += dt; inBot.add(i); if (B[i].matchT > mx) mx = B[i].matchT; }
+    if (mx >= CFG.mergeDelay) mergeList.push(g.map((i) => B[i]));
+  }
+  for (let i = 0; i < n; i++) if (!inTop.has(i) && !inBot.has(i)) B[i].matchT = 0;
+
+  for (const g of popList) popTop(g);
+  for (const g of mergeList) mergeBottom(g);
+  if (popList.length || mergeList.length) S.bodies = S.bodies.filter((b) => !b.dead);
+}
+
+function burst(x, y, color, count, power) {
+  if (reduceMotion) count = Math.ceil(count / 3);
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2, v = power * (0.4 + Math.random() * 0.6);
+    S.particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.45 + Math.random() * 0.25, color, r: 2 + Math.random() * 3 });
+  }
+}
+
+// 上の消去：何連鎖でも0点
+function popTop(g) {
+  let cx = 0, cy = 0;
+  for (const b of g) { cx += b.x; cy += b.y; b.dead = true; dropLinksOf(b); burst(b.x, b.y, KCOL[b.kind], 7, 220); }
+  cx /= g.length; cy /= g.length;
+  S.topChain = (S.t - S.lastTopPop < CFG.chainWindow) ? S.topChain + 1 : 1;
+  S.lastTopPop = S.t;
+  const m = S.metrics;
+  m.topPops++; m.topBodies += g.length;
+  // 時間延長：消えた塊1つにつき加算（連鎖専用ボーナスはなし。放置テストでは延長しない）
+  let extra = 0;
+  if (S.mode === 'play' && CFG.topPopBonus > 0) {
+    extra = CFG.topPopBonus;
+    S.timeLimit += extra;
+    m.extendCount++; m.extendTotal += extra;
+  }
+  if (S.topChain > m.maxTopChain) m.maxTopChain = S.topChain;
+  S.popups.push({
+    x: Math.max(70, Math.min(S.W - 70, cx)), y: Math.max(48, cy + 24),
+    text: 'ぱえよ〜ん', sub: (S.topChain > 1 ? S.topChain + '連鎖 ' : '') + '+0点' + (extra > 0 ? ' +' + extra + '秒' : ''),
+    t: 0, life: 1.1, color: COL.accent, size: 22
+  });
+  soundPaeyon(S.topChain);
+}
+
+// 下の成長：ここだけが得点
+function mergeBottom(g) {
+  let cx = 0, cy = 0;
+  for (const b of g) { cx += b.x; cy += b.y; b.dead = true; }
+  cx /= g.length; cy /= g.length;
+  const kind = g[0].kind, size = g[0].size + 1, oldR = g[0].r;
+  const tr = radiusFor(size);
+  makeBody({ x: cx, y: cy, r: oldR, tr, gr: Math.max(1, tr - oldR) / 0.25, kind, size, state: 'heavy' });
+  // 山を起こして、押しのけと詰め直しをさせる
+  for (const b of S.bodies) if (b.state === 'static') { b.state = 'heavy'; b.restT = 0; }
+
+  S.botChain = (S.t - S.lastMerge < CFG.chainWindow) ? S.botChain + 1 : 1;
+  S.lastMerge = S.t;
+  const table = CFG.scoreTable;
+  const base = table[size] || (table[CFG.maxSize] || 25600) * Math.pow(4, size - CFG.maxSize);
+  const pts = base * (CFG.chainBonus ? S.botChain : 1);
+  S.score += pts;
+  const m = S.metrics;
+  m.merges[size] = (m.merges[size] || 0) + 1;
+  if (S.botChain > m.maxBotChain) m.maxBotChain = S.botChain;
+  if (size === 2 && m.firstSize2 === null) m.firstSize2 = S.t;
+  if (size > S.maxSize) S.maxSize = size;
+  burst(cx, cy, KCOL[kind], 14, 300);
+  S.popups.push({
+    x: Math.max(60, Math.min(S.W - 60, cx)), y: cy - tr - 6,
+    text: '+' + pts, sub: S.botChain > 1 ? S.botChain + '連鎖！' : 'サイズ' + size,
+    t: 0, life: 1.2, color: COL.ink, size: 26
+  });
+  soundMerge(size, S.botChain);
+}
+
+/* ---------- 1フレーム分の進行 ---------- */
+function update(dt) {
+  if (!S || S.over) return;
+  S.t += dt;
+
+  S.spawnT -= dt;
+  if (S.spawnT <= 0) { spawn(); S.spawnT += spawnInterval(); }
+
+  const steps = Math.max(1, Math.round(dt / H_STEP));
+  for (let i = 0; i < steps; i++) step(dt / steps);
+
+  checkGroups(dt);
+
+  const landY = S.H * S.landFrac, deadY = S.H * S.deadFrac;
+  let danger = false;
+  for (const b of S.bodies) {
+    const sp = Math.hypot(b.vx, b.vy);
+    if (b.state === 'float' && !b.held) {
+      if (b.thrown) {
+        if (b.y > landY) { makeHeavy(b, true); continue; }
+        if (b.vy < -30 && S.t - b.relT > 0.15) b.thrown = false;
+      }
+      if (b.y > landY && sp < 30) { b.stuckT += dt; if (b.stuckT > 0.6) { makeHeavy(b, false); continue; } }
+      else b.stuckT = 0;
+      if (!b.thrown && b.age > 0.6 && sp < 60 && b.y + b.r > deadY) danger = true;
+    } else if (b.state === 'heavy') {
+      if (sp < 35) {
+        b.restT += dt;
+        if (b.restT > 0.25 && b.r >= b.tr && supported(b)) b.state = 'static';
+      } else b.restT = 0;
+    } else if (b.state === 'static') {
+      if (b.y - b.r < deadY) danger = true;
+    }
+  }
+  S.dangerT = danger ? S.dangerT + dt : Math.max(0, S.dangerT - dt * 2);
+
+  for (const p of S.popups) p.t += dt;
+  S.popups = S.popups.filter((p) => p.t < p.life);
+  for (const p of S.particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.94; p.vy *= 0.94; }
+  S.particles = S.particles.filter((p) => p.t < p.life);
+
+  if (S.dangerT >= CFG.deadSeconds) {
+    if (S.mode === 'demo') { S.bodies = []; S.links.clear(); S.dangerT = 0; }
+    else endGame('full');
+  } else if (S.t >= S.timeLimit) {
+    endGame('time');
+  }
+}
+
+/* =========================================================
+   操作（指で引っぱる）
+   ========================================================= */
+const ptr = { id: null, samples: [] };
+function evPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (VW / r.width), y: (e.clientY - r.top) * (VH / r.height) };
+}
+function pick(x, y) {
+  let best = null, bd = Infinity;
+  for (const b of S.bodies) {
+    if (b.state !== 'float') continue;
+    const d = Math.hypot(b.x - x, b.y - y);
+    if (d < b.r + CFG.touchPad && d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+function sameKindCluster(b) {
+  const seen = new Set([b]), q = [b];
+  while (q.length) {
+    const c = q.pop();
+    for (const l of S.links.values()) {
+      let o = null;
+      if (l.a === c) o = l.b; else if (l.b === c) o = l.a;
+      if (o && !seen.has(o) && o.kind === b.kind && o.state === 'float') { seen.add(o); q.push(o); }
+    }
+  }
+  return [...seen];
+}
+function setTargets(p) {
+  const h = S.held;
+  for (const it of h.list) { it.b.tx = p.x + it.ox; it.b.ty = p.y - CFG.fingerOffset + it.oy; }
+}
+function onDown(e) {
+  if (!S || S.mode !== 'play' || S.over || ptr.id !== null) return;
+  const p = evPos(e);
+  S.metrics.touches++;
+  const b = pick(p.x, p.y);
+  if (!b) { S.metrics.misses++; return; }
+  e.preventDefault();
+  ptr.id = e.pointerId;
+  try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 無視 */ }
+  const members = CFG.grabCluster ? sameKindCluster(b) : [b];
+  S.held = { primary: b, list: members.map((m) => ({ b: m, ox: m.x - b.x, oy: m.y - b.y })) };
+  for (const m of members) { m.held = true; m.thrown = false; m.grabT = S.t; m.matchT = 0; }
+  ptr.samples = [{ t: performance.now(), x: p.x, y: p.y }];
+  setTargets(p);
+}
+function onMove(e) {
+  if (ptr.id !== e.pointerId || !S || !S.held) return;
+  e.preventDefault();
+  const p = evPos(e);
+  ptr.samples.push({ t: performance.now(), x: p.x, y: p.y });
+  if (ptr.samples.length > 8) ptr.samples.shift();
+  setTargets(p);
+}
+function onUp(e) {
+  if (ptr.id !== e.pointerId) return;
+  ptr.id = null;
+  if (!S || !S.held) return;
+  const h = S.held; S.held = null;
+  let vx = 0, vy = 0;
+  if (CFG.flick && ptr.samples.length >= 2) {
+    const last = ptr.samples[ptr.samples.length - 1];
+    let first = ptr.samples[0];
+    for (const s of ptr.samples) { if (last.t - s.t <= 90) { first = s; break; } }
+    const dtm = (last.t - first.t) / 1000;
+    if (dtm > 0.012) { vx = (last.x - first.x) / dtm; vy = (last.y - first.y) / dtm; }
+    const sp = Math.hypot(vx, vy);
+    if (sp > MAX_V) { vx *= MAX_V / sp; vy *= MAX_V / sp; }
+    if (sp < 120) { vx = 0; vy = 0; }
+  }
+  const below = h.primary.y > S.H * S.landFrac;
+  for (const it of h.list) {
+    const b = it.b;
+    if (b.dead) continue;
+    b.held = false; b.relT = S.t;
+    dropLinksOf(b);
+    b.vx = vx; b.vy = vy;
+    if (below) makeHeavy(b, true);
+    else b.thrown = CFG.flick && (vx !== 0 || vy !== 0);
+  }
+}
+cv.addEventListener('pointerdown', onDown);
+cv.addEventListener('pointermove', onMove);
+cv.addEventListener('pointerup', onUp);
+cv.addEventListener('pointercancel', onUp);
+cv.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* =========================================================
+   描画
+   ========================================================= */
+let reduceMotion = false;
+try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* 無視 */ }
+
+function drawBody(b) {
+  const r = b.r;
+  if (CFG.rings) {
+    ctx.beginPath(); ctx.arc(b.x, b.y, r - 1, 0, Math.PI * 2);
+    ctx.globalAlpha = b.state === 'float' ? 0.26 : 0.5;
+    ctx.fillStyle = KCOL[b.kind]; ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = b.state === 'static' ? 3 : 2;
+    ctx.strokeStyle = KCOL[b.kind]; ctx.stroke();
+  }
+  const s = r * (CFG.rings ? 1.72 : 2.02);
+  ctx.drawImage(sprites[b.kind], b.x - s / 2, b.y - s / 2, s, s);
+  if (b.size >= 2) {
+    const br = Math.max(9, r * 0.26);
+    const bx = b.x + r * 0.62, by = b.y + r * 0.62;
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
+    ctx.fillStyle = COL.panel; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = KCOL[b.kind]; ctx.stroke();
+    ctx.fillStyle = COL.ink;
+    ctx.font = '400 ' + Math.round(br * 1.25) + 'px "Mochiy Pop One","Zen Maru Gothic",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(b.size), bx, by + 1);
+  }
+  if (b.held) {
+    ctx.beginPath(); ctx.arc(b.x, b.y, r + 4, 0, Math.PI * 2);
+    ctx.lineWidth = 3; ctx.strokeStyle = COL.accent; ctx.stroke();
+  }
+}
+function drawLine(y, color, label, dash) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash(dash);
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VW, y); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = color;
+  ctx.font = '700 11px "Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+  ctx.fillText(label, 8, y - 3);
+  ctx.restore();
+}
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const g = ctx.createLinearGradient(0, 0, 0, VH);
+  g.addColorStop(0, COL.skyTop); g.addColorStop(1, COL.skyBot);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+  if (!S) return;
+
+  const deadY = VH * S.deadFrac, landY = VH * S.landFrac;
+  if (S.dangerT > 0) {
+    const k = Math.min(1, S.dangerT / CFG.deadSeconds);
+    ctx.globalAlpha = 0.10 + 0.22 * k;
+    ctx.fillStyle = COL.danger; ctx.fillRect(0, 0, VW, deadY);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = COL.danger; ctx.fillRect(0, deadY - 3, VW * k, 6);
+  }
+  drawLine(deadY, COL.danger, 'ここまで溜まると終了', [10, 7]);
+  drawLine(landY, COL.land, 'ここより下で離すと着地', [3, 6]);
+
+  const B = S.bodies;
+  for (const b of B) if (b.state === 'static') drawBody(b);
+  for (const b of B) if (b.state === 'heavy') drawBody(b);
+  for (const b of B) if (b.state === 'float' && !b.held) drawBody(b);
+  for (const b of B) if (b.held) drawBody(b);
+
+  for (const p of S.particles) {
+    ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of S.popups) {
+    const k = p.t / p.life;
+    const pop = Math.min(1, p.t / 0.12);
+    ctx.globalAlpha = k < 0.7 ? 1 : Math.max(0, 1 - (k - 0.7) / 0.3);
+    const y = p.y - 34 * k;
+    const size = p.size * (0.6 + 0.4 * pop);
+    ctx.font = '400 ' + size.toFixed(1) + 'px "Mochiy Pop One","Zen Maru Gothic",sans-serif';
+    ctx.lineWidth = 5; ctx.strokeStyle = COL.panel; ctx.lineJoin = 'round';
+    ctx.strokeText(p.text, p.x, y); ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, y);
+    if (p.sub) {
+      ctx.font = '700 13px "Zen Maru Gothic",sans-serif';
+      ctx.lineWidth = 4; ctx.strokeText(p.sub, p.x, y + size * 0.9);
+      ctx.fillStyle = COL.muted; ctx.fillText(p.sub, p.x, y + size * 0.9);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* =========================================================
+   HUD・開始・結果
+   ========================================================= */
+const hud = { score: $('hudScore'), time: $('hudTime'), max: $('hudMax'), label: $('hudTimeLabel') };
+const shown = { score: null, time: null, max: null };
+function updateHud() {
+  if (!S) return;
+  const demo = S.mode === 'demo';
+  const sc = demo ? 0 : S.score;
+  const tm = demo ? CFG.timeLimit : Math.max(0, Math.ceil(S.timeLimit - S.t));
+  const mx = demo ? 1 : S.maxSize;
+  if (sc !== shown.score) { hud.score.textContent = sc.toLocaleString('ja-JP'); shown.score = sc; }
+  if (tm !== shown.time) {
+    if (!demo && shown.time !== null && tm > shown.time) {
+      hud.time.classList.add('bump');
+      setTimeout(() => hud.time.classList.remove('bump'), 350);
+    }
+    hud.time.textContent = tm; shown.time = tm;
+    hud.time.classList.toggle('hurry', !demo && tm <= 10);
+  }
+  if (mx !== shown.max) { hud.max.textContent = mx; shown.max = mx; }
+}
+
+function startGame(mode) {
+  initAudio();
+  resize();
+  newGame(mode);
+  $('startScreen').hidden = true;
+  $('endScreen').hidden = true;
+  $('btnQuit').hidden = false;
+  $('btnQuit').textContent = mode === 'idle' ? '放置テストをやめる' : 'やめる';
+  hud.label.hidden = true;
+  shown.time = null;
+  ptr.id = null;
+}
+function showStart() {
+  $('endScreen').hidden = true;
+  $('startScreen').hidden = false;
+  $('btnQuit').hidden = true;
+  hud.label.hidden = false;
+  newGame('demo');
+}
+
+function fillRate() {
+  let a = 0;
+  for (const b of S.bodies) a += Math.PI * b.r * b.r;
+  return a / (S.W * S.H);
+}
+function buildResults() {
+  const m = S.metrics;
+  const sizes = Object.keys(m.merges).sort().map((k) => 'サイズ' + k + '×' + m.merges[k]).join('、') || 'なし';
+  const reason = S.reason === 'time' ? '時間切れ' : (S.reason === 'full' ? '満杯' : '中断');
+  const rows = [
+    ['モード', S.mode === 'idle' ? '放置テスト' : '通常'],
+    ['設定', diffFromOfficial().length ? '公式' + OFFICIAL_VERSION + 'から' + diffFromOfficial().length + '項目を変更' : '公式デフォルト' + OFFICIAL_VERSION + 'と同じ'],
+    ['終了理由', reason],
+    ['プレイ時間', S.t.toFixed(1) + '秒'],
+    ['スコア', String(S.score)],
+    ['最大サイズ', String(S.maxSize)],
+    ['湧いた数', m.spawned + '個'],
+    ['上の消去（自然消去）', m.topPops + '回・' + m.topBodies + '個'],
+    ['上の最大連鎖', m.maxTopChain + '連鎖'],
+    ['時間延長', S.mode === 'idle' ? 'なし（放置テストは延長しない）' : m.extendCount + '回・合計' + m.extendTotal + '秒'],
+    ['下へ運んだ数', m.carried + '個'],
+    ['1回の運搬の平均', m.carried ? (m.carryTime / m.carried).toFixed(2) + '秒' : '—'],
+    ['つかみ損ね', m.misses + '回（タッチ' + m.touches + '回中）'],
+    ['サイズ2の初到達', m.firstSize2 !== null ? m.firstSize2.toFixed(1) + '秒' : 'なし'],
+    ['合体回数', sizes],
+    ['下の最大連鎖', m.maxBotChain + '連鎖'],
+    ['終了時の埋まり率', Math.round(fillRate() * 100) + '%']
+  ];
+  if (CFG.endBonus) rows.push(['終了時ボーナス', '+' + m.endBonus]);
+  return rows;
+}
+function settingsLine() {
+  return '設定: ' + SLIDERS.map((s) => s[0] + '=' + CFG[s[0]]).join(', ') + ', timeLimit=' + CFG.timeLimit + ', ' +
+    TOGGLES.map((t) => t[0] + '=' + (CFG[t[0]] ? 'on' : 'off')).join(', ');
+}
+let lastResultText = '';
+function endGame(reason) {
+  if (!S || S.over) return;
+  S.over = true; S.reason = reason;
+  if (S.held) { for (const it of S.held.list) it.b.held = false; S.held = null; }
+  ptr.id = null;
+  if (CFG.endBonus && S.mode === 'play') {
+    let bonus = 0;
+    for (const b of S.bodies) if (b.state !== 'float') bonus += CFG.endBonusTable[b.size] || 0;
+    S.metrics.endBonus = bonus; S.score += bonus;
+  }
+  const rows = buildResults();
+  $('endReason').textContent = reason === 'time' ? (S.mode === 'idle' ? '放置テスト終了' : '時間切れ！') : (reason === 'full' ? '満杯！' : '中断');
+  $('endScore').textContent = S.score.toLocaleString('ja-JP');
+  $('endSub').textContent = '最大サイズ ' + S.maxSize;
+  const dl = $('stats');
+  dl.textContent = '';
+  for (const [k, v] of rows) {
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    dl.append(dt, dd);
+  }
+  lastResultText = 'ふよふよ 試作の記録\n' + rows.map((r) => r[0] + ': ' + r[1]).join('\n') + '\n' + officialDetail() + settingsLine();
+  $('copied').textContent = '';
+  $('copyBox').hidden = true;
+  try { console.log(lastResultText); console.log(JSON.stringify({ metrics: S.metrics, score: S.score, maxSize: S.maxSize, reason, config: CFG, officialVersion: OFFICIAL_VERSION, changed: diffFromOfficial() })); } catch (e) { /* 無視 */ }
+  $('btnQuit').hidden = true;
+  hud.label.hidden = false;
+  $('endScreen').hidden = false;
+  $('endScreen').scrollTop = 0;
+  updateHud();
+}
+
+/* ---------- 公式デフォルトとの差分 ---------- */
+function fmtVal(v) { return typeof v === 'boolean' ? (v ? 'on' : 'off') : String(v); }
+function diffFromOfficial() {
+  const out = [];
+  for (const k of Object.keys(DEFAULTS)) {
+    if (typeof DEFAULTS[k] === 'object') continue;
+    const a = CFG[k], b = DEFAULTS[k];
+    const same = typeof b === 'number' ? Math.abs(a - b) < 1e-9 : a === b;
+    if (!same) out.push({ key: k, value: a, def: b });
+  }
+  return out;
+}
+function updateTuneStatus(msg) {
+  const el = $('tuneStatus');
+  if (!el) return;
+  if (msg) { el.textContent = msg; return; }
+  const n = diffFromOfficial().length;
+  el.textContent = n === 0
+    ? '設定：公式デフォルト' + OFFICIAL_VERSION + 'と同じ'
+    : '設定：公式' + OFFICIAL_VERSION + 'から' + n + '項目を調整中';
+}
+function officialDetail() {
+  const d = diffFromOfficial();
+  let t = '';
+  if (d.length) t += '公式' + OFFICIAL_VERSION + 'からの変更: ' + d.map((x) => x.key + '=' + fmtVal(x.value) + '（公式' + fmtVal(x.def) + '）').join(', ') + '\n';
+  t += '※公式' + OFFICIAL_VERSION + 'の暫定値: ' + PROVISIONAL.map((k) => k + '=' + fmtVal(DEFAULTS[k])).join(', ') + '\n';
+  return t;
+}
+
+/* ---------- 調整パネル ---------- */
+function fmt(key, unit) {
+  const v = CFG[key];
+  const txt = Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/, '');
+  return txt + unit;
+}
+function bindSlider(key, unit) {
+  const el = $('set-' + key), out = $('out-' + key);
+  el.value = CFG[key];
+  out.textContent = fmt(key, unit);
+  el.addEventListener('input', () => {
+    CFG[key] = Number(el.value);
+    out.textContent = fmt(key, unit);
+    saveConfig();
+    updateTuneStatus();
+    if (S && S.mode === 'demo' && key === 'cols') newGame('demo');
+  });
+}
+function buildTune() {
+  const body = $('tuneBody');
+  body.textContent = '';
+  const note = document.createElement('p');
+  note.className = 'tune-note';
+  note.textContent = '好みに合わせて自由に変えられます。変えた値は次のプレイから効きます。';
+  body.append(note);
+  for (const [key, label, min, max, stepv, unit] of SLIDERS) {
+    const wrap = document.createElement('div'); wrap.className = 'field';
+    const head = document.createElement('div'); head.className = 'field-head';
+    const lb = document.createElement('label'); lb.htmlFor = 'set-' + key; lb.textContent = label;
+    const out = document.createElement('output'); out.id = 'out-' + key; out.htmlFor = 'set-' + key;
+    head.append(lb, out);
+    const inp = document.createElement('input');
+    inp.type = 'range'; inp.id = 'set-' + key; inp.min = min; inp.max = max; inp.step = stepv;
+    wrap.append(head, inp); body.append(wrap);
+    bindSlider(key, unit);
+  }
+  for (const [key, label] of TOGGLES) {
+    const lb = document.createElement('label'); lb.className = 'toggle';
+    const inp = document.createElement('input'); inp.type = 'checkbox'; inp.id = 'set-' + key; inp.checked = !!CFG[key];
+    const sp = document.createElement('span'); sp.textContent = label;
+    inp.addEventListener('change', () => { CFG[key] = inp.checked; saveConfig(); updateTuneStatus(); });
+    lb.append(inp, sp); body.append(lb);
+  }
+  updateTuneStatus();
+}
+function bindTime() {
+  const el = $('set-timeLimit'), out = $('out-timeLimit');
+  el.value = CFG.timeLimit; out.textContent = CFG.timeLimit + '秒';
+}
+$('set-timeLimit').addEventListener('input', (e) => {
+  CFG.timeLimit = Number(e.target.value);
+  $('out-timeLimit').textContent = CFG.timeLimit + '秒';
+  saveConfig(); shown.time = null; updateTuneStatus();
+});
+
+$('btnReset').addEventListener('click', () => {
+  CFG = JSON.parse(JSON.stringify(DEFAULTS));
+  saveConfig(); buildTune(); bindTime(); newGame('demo');
+  updateTuneStatus('公式デフォルト' + OFFICIAL_VERSION + 'に戻しました。');
+});
+$('btnStart').addEventListener('click', () => startGame('play'));
+$('btnIdle').addEventListener('click', () => startGame('idle'));
+$('btnAgain').addEventListener('click', () => startGame(S && S.mode === 'idle' ? 'idle' : 'play'));
+$('btnBack').addEventListener('click', showStart);
+$('btnQuit').addEventListener('click', () => endGame('quit'));
+$('btnCopy').addEventListener('click', () => {
+  const fallback = () => {
+    const box = $('copyBox');
+    box.hidden = false; box.value = lastResultText; box.focus(); box.select();
+    $('copied').textContent = '下の枠を長押ししてコピーしてください。';
+  };
+  try {
+    navigator.clipboard.writeText(lastResultText).then(
+      () => { $('copied').textContent = 'コピーしました。'; },
+      fallback
+    );
+  } catch (e) { fallback(); }
+});
+
+/* =========================================================
+   起動
+   ========================================================= */
+let lastT = 0, frame = 0;
+function loop(now) {
+  const dt = Math.min(0.05, Math.max(0.001, (now - lastT) / 1000));
+  lastT = now;
+  if ((frame++ % 45) === 0) readColors();
+  update(dt);
+  render();
+  updateHud();
+  requestAnimationFrame(loop);
+}
+function start() {
+  readColors();
+  buildSprites();
+  buildTune();
+  bindTime();
+  $('officialNote').textContent = '公式デフォルト' + OFFICIAL_VERSION + '：' + PROVISIONAL.map((k) => (k === 'topPopBonus' ? '延長' + DEFAULTS[k] + '秒' : '湧き終わり' + DEFAULTS[k] + '秒')).join('・') + 'は暫定値です。';
+  resize();
+  try { new ResizeObserver(resize).observe(stage); } catch (e) { window.addEventListener('resize', resize); }
+  newGame('demo');
+  lastT = performance.now();
+  requestAnimationFrame(loop);
+}
+// 検証用の入口（コンソールから状態を見たり、時間を進めたりできる）
+window.FUYO = {
+  get state() { return S; },
+  get config() { return CFG; },
+  advance(seconds) { const n = Math.round(seconds * 60); for (let i = 0; i < n; i++) update(1 / 60); },
+  startGame, makeHeavy
+};
+start();
+})();
+</script>
+
+</body></html>
